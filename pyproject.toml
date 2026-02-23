@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "threelane-memory"
+version = "0.1.0"
+description = "A personal long-term memory system built on Neo4j and OpenAI — stores and recalls episodic memories across a 70-year lifespan using a hybrid 3-lane retrieval engine."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    { name = "Ankesh Kumar" },
+]
+keywords = [
+    "memory",
+    "neo4j",
+    "knowledge-graph",
+    "openai",
+    "embeddings",
+    "long-term-memory",
+    "personal-ai",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Database",
+    "Typing :: Typed",
+]
+dependencies = [
+    "neo4j>=5.0",
+    "langchain>=0.2",
+    "langchain-openai>=0.1",
+    "openai>=1.0",
+    "numpy>=1.24",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+streamlit = ["streamlit>=1.30"]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+    "mypy>=1.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/ankeshkumar/threelane-memory"
+Repository = "https://github.com/ankeshkumar/threelane-memory"
+Issues = "https://github.com/ankeshkumar/threelane-memory/issues"
+Documentation = "https://github.com/ankeshkumar/threelane-memory#readme"
+
+[project.scripts]
+threelane-memory = "threelane_memory.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["threelane_memory*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "integration: tests that require API keys and external services",
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
