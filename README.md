@@ -44,6 +44,93 @@ Ask any of them: *"What changed about me since last year?"* — silence.
 
 Ask Threelane — it knows, because it actually tracks entities, states, and time.
 
+---
+
+## What Makes Threelane Different
+
+Most agent memory systems are just vector databases with chat history attached.  
+Threelane introduces **cognitively inspired memory mechanics** that make long-term memory actually work.
+
+### 🧠 1. 3-Lane Retrieval (Searches Memory Like Humans)
+
+Instead of relying on vector similarity alone, Threelane retrieves memories through **three parallel lanes**:
+
+- **Recent lane** — prevents immediate context loss  
+- **Temporal lane** — understands time queries like *“last year”* or *“in 2022”*  
+- **Semantic lane** — traditional ANN vector similarity  
+
+These lanes are merged and re-ranked to surface the right memory.
+
+**Result:** Memory retrieval becomes multi-dimensional — not just semantic, but also temporal and contextual.
+
+---
+
+### ⭐ 2. Landmark Memory Protection
+
+Humans don’t forget major life events just because they’re old.  
+Threelane mirrors this behavior with an **importance floor**:
+
+importance ≥ 0.75 → recency decay disabled
+
+Your wedding, promotions, diagnoses, or life milestones remain instantly retrievable decades later.
+
+---
+
+### 🔄 3. State Supersession (Memory Evolves, Not Overwrites)
+
+Facts change over time. Threelane tracks this explicitly:
+
+(State: city=New York) ──SUPERSEDES──▶ (State: city=San Francisco)
+
+This enables:
+
+- Accurate current answers  
+- Full historical trace  
+- Contradiction resolution  
+- Versioned facts  
+
+Ask *“Where do I live?”* → New York  
+Ask *“Did I ever live in SF?”* → Yes, before moving  
+
+---
+
+### 📈 4. Lifespan-Aware Retrieval Scaling
+
+Most systems search a fixed number of memories.  
+Threelane adapts search dynamically:
+
+candidate_pool = 2% of total episodes (clamped 50–500)
+
+This ensures:
+
+- Efficient retrieval at small scale  
+- Deep search at large scale  
+- Lifelong memory scalability  
+
+---
+
+### 🔮 5. Future-Proof Embedding Migration
+
+Embedding models evolve. Most memory systems silently degrade when they change.
+
+Threelane stores embedding model versions and provides batch re-indexing utilities so memory remains usable across decades of model upgrades.
+
+---
+
+### 🧩 6. Temporal Knowledge Graph Memory
+
+By combining:
+
+- structured episodic graph storage  
+- supersession chains  
+- entity resolution  
+- consolidation  
+- hybrid retrieval  
+
+Threelane behaves less like a vector store and more like a **temporal knowledge graph for personal memory**.
+
+---
+
 ## How It Works
 
 Threelane doesn't store text. It **understands** it.
