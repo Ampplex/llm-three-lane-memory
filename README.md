@@ -1,7 +1,7 @@
-# threelane-memory
+# LLM Three-Lane Memory: A Cognitive Architecture for Long-Term AI Agent Memory
+**Short-term → Episodic → Long-term memory consolidation for scalable AI agents**
 
-**Lifetime persistent memory for LLMs — a knowledge graph that remembers everything, knows what changed, and never forgets what matters.**
-
+Lifetime persistent memory for LLMs — a knowledge graph that remembers everything, knows what changed, and never forgets what matters.
 Every fact you store today is still retrievable 50 years from now — accurately, instantly, and in context.
 
 ```python
