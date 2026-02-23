@@ -1,75 +1,132 @@
 # threelane-memory
 
-**Give any LLM a lifelong memory — not chat history, an actual knowledge graph that understands what changed, what matters, and what happened when.**
+**Lifetime persistent memory for LLMs — a knowledge graph that remembers everything, knows what changed, and never forgets what matters.**
+
+Every fact you store today is still retrievable 50 years from now — accurately, instantly, and in context.
+
+```python
+from threelane_memory import store, query
+
+store("I love playing football")
+store("I just started at Google as a software engineer in San Francisco")
+
+# Months later...
+store("I got promoted to senior engineer at Google")
+store("I moved from San Francisco to New York")
+
+# A friend invites you to play football — should you go?
+query("My friend invited me to play football, should I go?")
+# → "Yes, you should go! You love playing football."
+
+query("Where do I work?")        # → "Google, as a senior software engineer." (role updated)
+query("Where do I live?")        # → "New York." (not SF — state was superseded)
+query("Did I ever live in SF?")  # → "Yes, before moving to New York." (history preserved)
+```
+
+The football memory was stored months ago in a completely different conversation. But when you need it, Threelane connects the dots — because it actually *understands* what it stored, not just what's similar.
+
+No context windows. No token limits. No forgetting. **Persistent memory that outlives any single conversation — or any single year.**
 
 ---
 
-## The Problem
+## Why This Exists
 
-LLMs are stateless. Every conversation starts from zero. The common fixes — chat logs, RAG over documents, vector stores — all share the same blind spots:
+LLMs are stateless. Every conversation starts from zero. The common workarounds all break down over time:
 
-| Approach | What it misses |
-|---|---|
-| **Chat history** | Grows unbounded, no structure, no contradiction handling |
-| **Vector stores** (Pinecone, ChromaDB, Weaviate) | Flat document chunks — no entity relationships, no temporal awareness, no state tracking |
-| **RAG pipelines** | Retrieve similar text, not *relevant knowledge* — "I moved to NYC" never invalidates "I live in SF" |
-| **Context-window managers** (MemGPT/Letta) | Clever paging, but still operating on raw text with no semantic structure |
+| Approach | Works for a week | Breaks at scale |
+|---|---|---|
+| **Chat history** | ✓ | Grows unbounded, no structure, can't handle contradictions |
+| **Vector stores** (Pinecone, ChromaDB) | ✓ | Flat chunks — "I moved to NYC" never invalidates "I live in SF" |
+| **RAG pipelines** | ✓ | Retrieves similar text, not relevant *knowledge* |
+| **Context-window managers** (MemGPT) | ✓ | Clever paging, but still raw text — no entity tracking, no state evolution |
 
-None of them answer: *"What has changed since last time?"* or *"What's still true about this person?"*
+Ask any of them: *"What changed about me since last year?"* — silence.
 
-## How Threelane Is Different
+Ask Threelane — it knows, because it actually tracks entities, states, and time.
 
-Threelane Memory doesn't store text — it **understands** it. Every input is parsed by an LLM into structured semantics (entities, actions, states, roles, emotions, locations) and written into a **Neo4j knowledge graph** with typed relationships.
+## How It Works
 
-When you say *"I adopted a dog named Max, he's 3 years old"*, Threelane doesn't just embed the sentence. It creates:
+Threelane doesn't store text. It **understands** it.
+
+Every input is parsed by an LLM into structured semantics — entities, actions, states, roles, emotions, locations — and written into a **Neo4j knowledge graph** with typed relationships. This isn't an embedding dump. It's a living, evolving model of everything you've told it.
+
+### What Happens When You Store a Memory
+
+*"I love playing football"* becomes a structured graph:
 
 ```
-(Episode) ──INVOLVES──▶ (Entity: Max)
+(Episode) ──INVOLVES──▶ (Entity: you)
+    │
+    ├──HAS_STATE──▶ (State: hobby=football, sentiment=love) ──OF_ENTITY──▶ (Entity: you)
+    └──INVOLVES──▶ (Entity: football)
+```
+
+*"I just started at Google as a software engineer in San Francisco"*:
+
+```
+(Episode) ──INVOLVES──▶ (Entity: Google)
     │                        │
-    ├──HAS_ACTION──▶ (Action: adopted) ──BY_ENTITY──▶ (Entity: you)
-    │                                   ──ON_ENTITY──▶ (Entity: Max)
-    ├──HAS_STATE──▶ (State: age=3) ──OF_ENTITY──▶ (Entity: Max)
-    └──HAS_STATE──▶ (State: species=dog) ──OF_ENTITY──▶ (Entity: Max)
+    ├──HAS_ACTION──▶ (Action: started working) ──BY_ENTITY──▶ (Entity: you)
+    │                                          ──ON_ENTITY──▶ (Entity: Google)
+    ├──HAS_STATE──▶ (State: role=software engineer) ──OF_ENTITY──▶ (Entity: you)
+    └──AT_LOCATION──▶ (Location: San Francisco)
 ```
 
-Later, when you say *"Max turned 4"*, the old state is **superseded** — not deleted, not duplicated — with a full audit trail:
+Months later, when someone asks *"My friend invited me to play football, should I go?"*, Threelane retrieves the football episode by semantic similarity, sees the `sentiment=love` state, and answers: *"Yes! You love playing football."*
+
+No explicit link was ever made between the question and the stored memory — the knowledge graph makes the connection automatically.
+
+### What Happens When Facts Change
+
+*"I moved from San Francisco to New York"* — the old state is **superseded**, not deleted or duplicated. Full history is preserved:
 
 ```
-(State: age=4, active=true) ──SUPERSEDES──▶ (State: age=3, active=false)
+(State: city=New York, active=true) ──SUPERSEDES──▶ (State: city=San Francisco, active=false)
 ```
 
-**This is what "memory" actually means.** Not similarity search — structured, evolving knowledge.
+Ask *"Where do I live?"* → gets the current answer: New York.  
+Ask *"Where was I living when I joined Google?"* → still knows it was San Francisco.
 
-### 3-Lane Retrieval
+**This is what persistent memory actually means.** Not similarity search — structured, evolving knowledge with a complete audit trail.
 
-Retrieval isn't just "find the closest vector." Threelane scores every candidate across three lanes:
+### 3-Lane Retrieval: Why the Right Memory Surfaces
+
+Most systems rank by vector similarity alone. That works for a week. Over years, your "I got married" memory gets buried under thousands of newer, more recent entries.
+
+Threelane scores every candidate across **three lanes** simultaneously:
 
 ```
 score = 0.65 × vector_similarity + 0.30 × importance + 0.05 × recency
 ```
 
 - **Vector similarity** — semantic relevance via ANN search
-- **Importance** — LLM-assigned at ingestion time (landmark events score higher)
-- **Recency** — exponential decay with a 365-day half-life, tuned so a 70-year-old memory still surfaces if it matters
+- **Importance** — LLM-assigned at ingestion (landmark life events score higher)
+- **Recency** — exponential decay with a 365-day half-life
 
-Memories above importance 0.75 **bypass recency decay entirely** — your wedding, your child's birth, your PhD defense never get buried by yesterday's grocery list.
+The key: memories above importance 0.75 **bypass recency decay entirely**. Your wedding, your child's birth, a cancer diagnosis — these surface instantly no matter how old they are. Yesterday's lunch order won't outrank them.
 
-### Entity Resolution
+### Entity Resolution: One Identity, Many Names
 
-"Max", "my dog Max", "the dog", "him" — Threelane resolves all of these to the same canonical entity through 3-layer matching:
+*"Google"*, *"my company"*, *"the office"*, *"work"* — all resolve to the same canonical entity through 3-layer matching:
 
 1. **Case-insensitive exact** — instant lookup
-2. **Substring containment** — "my dog Max" → Max
+2. **Substring containment** — "my company Google" → Google
 3. **Embedding similarity** — cosine ≥ 0.88 catches semantic equivalents
 
-### Built for Decades, Not Chat Sessions
+### Designed to Last a Lifetime
 
-Most memory systems assume weeks of data. Threelane is tuned for a **70-year lifespan**:
+Most memory systems assume weeks of data. Threelane is engineered for a **70-year lifespan**:
 
-- Dynamic candidate pool scales with graph size (2% of episodes, clamped 50–500)
-- Consolidation engine LLM-summarizes old low-importance episodes to keep the graph manageable
-- Background entity deduplication merges fragmented nodes in 3 passes
-- Full JSON backup with timestamped exports for disaster recovery
+| What could go wrong | How Threelane handles it |
+|---|---|
+| Graph grows to millions of nodes | Dynamic candidate pool scales with size (2% of episodes, 50–500) |
+| Old memories become noise | Consolidation engine LLM-summarizes old low-importance episodes |
+| Entity names fragment over years | Background 3-pass deduplication merges fragmented nodes |
+| Facts become outdated | SUPERSEDES chain — current state always queryable, history preserved |
+| Embedding models get replaced | Model version tags + batch reindex utility |
+| Disaster strikes | Full JSON backup with timestamped exports |
+
+**Store a memory on day one. Query it on day 25,550 (year 70). It's still there, still accurate, still in context.**
 
 ---
 
@@ -175,12 +232,12 @@ threelane-memory config
 from threelane_memory import store, query, close
 
 # Store memories
-store("My dog Max is 3 years old", speaker="ankesh")
+store("I love playing football", speaker="ankesh")
 store("I work at Google as a software engineer", speaker="ankesh")
 
-# Query memories
-answer = query("How old is Max?", speaker="ankesh")
-print(answer)  # "Max is 3 years old."
+# Query — even months later, across different conversations
+answer = query("My friend invited me to play football, should I go?", speaker="ankesh")
+print(answer)  # "Yes, you should! You love playing football."
 
 close()
 ```
@@ -192,10 +249,10 @@ close()
 threelane-memory chat --speaker ankesh
 
 # Store a single memory
-threelane-memory store "My dog Max is 3 years old" --speaker ankesh
+threelane-memory store "I love playing football" --speaker ankesh
 
-# Query
-threelane-memory query "How old is Max?" --speaker ankesh
+# Query — connects to stored knowledge automatically
+threelane-memory query "My friend invited me to play football, should I go?" --speaker ankesh
 
 # Show active provider, models & run health checks
 threelane-memory config
