@@ -5,6 +5,7 @@ Usage::
     threelane-memory chat                        # interactive chat
     threelane-memory store "I met Alice today"   # store a single memory
     threelane-memory query "Who did I meet?"     # query memories
+    threelane-memory config                      # show active provider & config
     threelane-memory backup                      # export graph to JSON
     threelane-memory dedup                       # merge duplicate entities
     threelane-memory dedup --dry-run             # preview dedup merges
@@ -18,8 +19,15 @@ import argparse
 import sys
 
 
+def _preflight_check() -> None:
+    """Run a dimension-mismatch check and warn the user if necessary."""
+    from threelane_memory.database import check_index_dimension
+    check_index_dimension()
+
+
 def _cmd_chat(args: argparse.Namespace) -> None:
     """Launch interactive chat loop."""
+    _preflight_check()
     from threelane_memory.chat import main as chat_main
 
     chat_main(speaker=args.speaker)
@@ -27,6 +35,7 @@ def _cmd_chat(args: argparse.Namespace) -> None:
 
 def _cmd_store(args: argparse.Namespace) -> None:
     """Store a single memory from the command line."""
+    _preflight_check()
     from threelane_memory import store
 
     episode_id = store(args.text, speaker=args.speaker)
@@ -35,10 +44,77 @@ def _cmd_store(args: argparse.Namespace) -> None:
 
 def _cmd_query(args: argparse.Namespace) -> None:
     """Query memories from the command line."""
+    _preflight_check()
     from threelane_memory import query
 
     answer = query(args.question, speaker=args.speaker)
     print(answer)
+
+
+def _cmd_config(args: argparse.Namespace) -> None:
+    """Show active provider configuration and run health checks."""
+    from threelane_memory.config import get_provider_summary, SUPPORTED_PROVIDERS
+    from threelane_memory.database import get_index_dimension, check_index_dimension
+
+    info = get_provider_summary()
+
+    print("╔══════════════════════════════════════════════════════════════╗")
+    print("║              threelane-memory · Configuration               ║")
+    print("╠══════════════════════════════════════════════════════════════╣")
+    print(f"║  Provider        : {info['provider']:<40} ║")
+    print(f"║  Chat model      : {info['chat_model']:<40} ║")
+    print(f"║  Embed model     : {info['embed_model']:<40} ║")
+    print(f"║  Embedding dim   : {str(info['embedding_dim']):<40} ║")
+    print(f"║  Neo4j URI       : {info['neo4j_uri'][:40]:<40} ║")
+    print("╠══════════════════════════════════════════════════════════════╣")
+
+    # Neo4j connectivity
+    try:
+        from threelane_memory.database import run_query
+        run_query("RETURN 1 AS ok")
+        print("║  Neo4j status    : ✅ connected                            ║")
+    except Exception as e:
+        msg = str(e)[:35]
+        print(f"║  Neo4j status    : ❌ {msg:<38} ║")
+
+    # Vector index dimension
+    idx_dim = get_index_dimension()
+    if idx_dim is None:
+        print("║  Vector index    : ⚠  not found (will auto-create)        ║")
+    elif idx_dim == info["embedding_dim"]:
+        print(f"║  Vector index    : ✅ {idx_dim}-dim (matches config)          {'   ' if idx_dim < 1000 else '  '}║")
+    else:
+        print(f"║  Vector index    : ❌ {idx_dim}-dim (config expects {info['embedding_dim']})      ║")
+
+    # Ollama connectivity (if applicable)
+    if info["provider"] == "ollama":
+        try:
+            import urllib.request
+            from threelane_memory.config import OLLAMA_BASE_URL
+            req = urllib.request.urlopen(OLLAMA_BASE_URL, timeout=3)
+            print("║  Ollama status   : ✅ running                             ║")
+        except Exception:
+            print("║  Ollama status   : ❌ not reachable (is ollama serve on?)  ║")
+
+    print("╚══════════════════════════════════════════════════════════════╝")
+    print()
+
+    # Detailed mismatch warning (if any)
+    check_index_dimension()
+
+    # Switching help
+    other = [p for p in SUPPORTED_PROVIDERS if p != info["provider"]]
+    if other:
+        print(f"  To switch to {other[0]}, see: .env.example")
+        print(f"  After switching, run: threelane-memory config")
+        print()
+
+    # OpenAI key check
+    if info["provider"] == "openai":
+        from threelane_memory.config import OPENAI_API_KEY
+        if not OPENAI_API_KEY:
+            print("  ⚠  OPENAI_API_KEY is empty — set it in .env")
+            print()
 
 
 def _cmd_backup(args: argparse.Namespace) -> None:
@@ -82,7 +158,7 @@ def main(argv: list[str] | None = None) -> None:
     """Entry point for the ``threelane-memory`` CLI."""
     parser = argparse.ArgumentParser(
         prog="threelane-memory",
-        description="Personal long-term memory on Neo4j + OpenAI",
+        description="Personal long-term memory on Neo4j — supports Ollama (local) and OpenAI",
     )
     parser.add_argument(
         "--version", action="version",
@@ -90,6 +166,11 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     sub = parser.add_subparsers(dest="command", help="Available commands")
+
+    # ── config ────────────────────────────────────────────────────────────
+    p_config = sub.add_parser("config",
+                              help="Show active provider, models & health checks")
+    p_config.set_defaults(func=_cmd_config)
 
     # ── chat ──────────────────────────────────────────────────────────────
     p_chat = sub.add_parser("chat", help="Interactive memory chat")

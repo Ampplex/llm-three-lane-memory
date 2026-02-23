@@ -36,13 +36,13 @@ classifiers = [
 dependencies = [
     "neo4j>=5.0",
     "langchain>=0.2",
-    "langchain-openai>=0.1",
-    "openai>=1.0",
+    "langchain-ollama>=0.2",
     "numpy>=1.24",
     "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]
+openai = ["langchain-openai>=0.1", "openai>=1.0"]
 streamlit = ["streamlit>=1.30"]
 dev = [
     "pytest>=7.0",

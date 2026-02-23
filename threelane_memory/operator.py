@@ -58,4 +58,13 @@ def operator_extract(text: str) -> SemanticExtraction:
     except json.JSONDecodeError as exc:
         raise ValueError(f"Operator output is not valid JSON: {exc}\n---\n{response}")
 
+    # ── Normalize: guard against local LLMs returning null for list fields ──
+    for key in ("entities", "roles", "actions", "states"):
+        if not data.get(key):
+            data[key] = []
+    data.setdefault("summary", text)
+    data.setdefault("emotion", "neutral")
+    data.setdefault("importance", 0.5)
+    data.setdefault("location", None)
+
     return data

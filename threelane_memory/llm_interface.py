@@ -1,24 +1,39 @@
-"""OpenAI LLM wrapper for chat / reasoning calls."""
+"""LLM wrapper — supports Ollama (local) and OpenAI providers."""
 
-from langchain_openai import ChatOpenAI
+from __future__ import annotations
+
 from threelane_memory.config import (
+    LLM_PROVIDER,
+    OLLAMA_BASE_URL,
+    OLLAMA_CHAT_MODEL,
     OPENAI_API_KEY,
     OPENAI_CHAT_MODEL,
 )
 
-# ── Validate credentials at import time ───────────────────────────────────────
-if not OPENAI_API_KEY:
-    raise ValueError(
-        "OpenAI API key not set. Add to .env:\n"
-        "  OPENAI_API_KEY=sk-your-api-key"
-    )
+# ── Build the LLM client based on provider ───────────────────────────────────
 
-client = ChatOpenAI(
-    model=OPENAI_CHAT_MODEL,
-    api_key=OPENAI_API_KEY,
-    temperature=0.15,
-    streaming=False,
-)
+if LLM_PROVIDER == "ollama":
+    from langchain_ollama import ChatOllama
+
+    client = ChatOllama(
+        model=OLLAMA_CHAT_MODEL,
+        base_url=OLLAMA_BASE_URL,
+        temperature=0.15,
+    )
+else:
+    from langchain_openai import ChatOpenAI
+
+    if not OPENAI_API_KEY:
+        raise ValueError(
+            "OpenAI API key not set. Add to .env:\n"
+            "  OPENAI_API_KEY=sk-your-api-key"
+        )
+    client = ChatOpenAI(
+        model=OPENAI_CHAT_MODEL,
+        api_key=OPENAI_API_KEY,
+        temperature=0.15,
+        streaming=False,
+    )
 
 
 def invoke_llm(prompt: str) -> str:

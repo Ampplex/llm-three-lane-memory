@@ -1,33 +1,47 @@
-"""OpenAI embeddings wrapper and cosine-similarity helper."""
+"""Embedding wrapper — supports Ollama (local) and OpenAI providers."""
+
+from __future__ import annotations
 
 import numpy as np
-from langchain_openai import OpenAIEmbeddings
+
 from threelane_memory.config import (
+    LLM_PROVIDER,
+    OLLAMA_BASE_URL,
+    OLLAMA_EMBED_MODEL,
     OPENAI_API_KEY,
     OPENAI_EMBED_MODEL,
     EMBEDDING_DIM,
-    EMBEDDING_MODEL_VERSION,
 )
 
-# ── Validate credentials at import time ───────────────────────────────────────
-if not OPENAI_API_KEY:
-    raise ValueError(
-        "OpenAI API key not set. Add to .env:\n"
-        "  OPENAI_API_KEY=sk-your-api-key"
+# ── Build the embeddings client based on provider ────────────────────────────
+
+if LLM_PROVIDER == "ollama":
+    from langchain_ollama import OllamaEmbeddings
+
+    _embeddings = OllamaEmbeddings(
+        model=OLLAMA_EMBED_MODEL,
+        base_url=OLLAMA_BASE_URL,
     )
+else:
+    from langchain_openai import OpenAIEmbeddings
 
-openai_embeddings = OpenAIEmbeddings(
-    model=OPENAI_EMBED_MODEL,
-    api_key=OPENAI_API_KEY,
-)
+    if not OPENAI_API_KEY:
+        raise ValueError(
+            "OpenAI API key not set. Add to .env:\n"
+            "  OPENAI_API_KEY=sk-your-api-key"
+        )
+    _embeddings = OpenAIEmbeddings(
+        model=OPENAI_EMBED_MODEL,
+        api_key=OPENAI_API_KEY,
+    )
 
 
 def embed(text: str) -> list[float]:
-    """Return an embedding vector for *text* (1536-dim for ada-002)."""
+    """Return an embedding vector for *text*."""
     if not text or not text.strip():
         return [0.0] * EMBEDDING_DIM
     try:
-        return openai_embeddings.embed_query(text)
+        return _embeddings.embed_query(text)
     except Exception as e:
         print(f"[embeddings] Error generating embedding: {e}")
         return [0.0] * EMBEDDING_DIM
