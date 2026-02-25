@@ -352,12 +352,6 @@ threelane-memory consolidate --speaker ankesh
 threelane-memory reindex --speaker ankesh --old-model nomic-embed-text
 ```
 
-Or via `python -m`:
-
-```bash
-python -m threelane_memory chat --speaker ankesh
-```
-
 ## Architecture
 
 ```
